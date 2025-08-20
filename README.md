@@ -1,7 +1,3 @@
----
-
-# README.md
-
 # NixOS Dotfiles
 
 Declarative NixOS config with a bootstrap installer. The installer can:
@@ -12,8 +8,6 @@ Declarative NixOS config with a bootstrap installer. The installer can:
 
 > Default token to replace is **`chase`**. You can change the token via `REPLACE_TOKEN`.
 
----
-
 ## Repo layout (typical)
 
 - `flake.nix` — top-level flake
@@ -21,8 +15,6 @@ Declarative NixOS config with a bootstrap installer. The installer can:
 - `home/` — Home Manager configs (optional)
 - `modules/`, `overlays/` — reusable modules & overlays
 - `install.sh` — the bootstrap script in this README
-
----
 
 ## Fresh install (minimal ISO)
 
@@ -123,8 +115,6 @@ home-manager switch --flake .#<user>@<host>
 * **GitHub unreachable:** Bring networking up (`nmtui`, `nmcli`, `wpa_supplicant`) and retry.
 * **Host not found:** Ensure `<CONFIG_NAME>` exists in your `flake.nix` under `nixosConfigurations`.
 * **Permission prompts:** Use `INSTALL_NO_ROOT_PASSWD=1` if your flake manages users/passwords declaratively.
-
----
 
 ## License
 
