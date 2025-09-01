@@ -1,5 +1,21 @@
 {
   "nodes": {
+    "dotsHyprland": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1756701574,
+        "narHash": "sha256-odIS1nsqTutJtUocMq5yx8hCn9ZnPOu988+DeG4kOGk=",
+        "owner": "ChaseSunstrom",
+        "repo": "dots-hyprland",
+        "rev": "5332eeb1ada75afe482600f89b98692b9ce742cc",
+        "type": "github"
+      },
+      "original": {
+        "owner": "ChaseSunstrom",
+        "repo": "dots-hyprland",
+        "type": "github"
+      }
+    },
     "home-manager": {
       "inputs": {
         "nixpkgs": [
@@ -37,10 +53,28 @@
         "type": "github"
       }
     },
+    "nixpkgsUnstable": {
+      "locked": {
+        "lastModified": 1756542300,
+        "narHash": "sha256-tlOn88coG5fzdyqz6R93SQL5Gpq+m/DsWpekNFhqPQk=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "d7600c775f877cd87b4f5a831c28aa94137377aa",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "root": {
       "inputs": {
+        "dotsHyprland": "dotsHyprland",
         "home-manager": "home-manager",
-        "nixpkgs": "nixpkgs"
+        "nixpkgs": "nixpkgs",
+        "nixpkgsUnstable": "nixpkgsUnstable"
       }
     }
   },
