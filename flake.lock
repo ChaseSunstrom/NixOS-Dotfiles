@@ -3,11 +3,11 @@
     "dotsHyprland": {
       "flake": false,
       "locked": {
-        "lastModified": 1756701574,
-        "narHash": "sha256-odIS1nsqTutJtUocMq5yx8hCn9ZnPOu988+DeG4kOGk=",
+        "lastModified": 1756703902,
+        "narHash": "sha256-hB6d9ZfSr1rP0zSQn19UO/wNSS8nBFHyDGPsOoq8CgQ=",
         "owner": "ChaseSunstrom",
         "repo": "dots-hyprland",
-        "rev": "5332eeb1ada75afe482600f89b98692b9ce742cc",
+        "rev": "6f249d522c8de0f8273ac5e93a00a74e9f759164",
         "type": "github"
       },
       "original": {

@@ -74,7 +74,6 @@
   security.pam.services.swaylock = {};
   # or: security.pam.services.hyprlock = {};  # This is fine to keep here; it’s just an option path,
   # it doesn’t require importing HM in this file:
-  home-manager.backupFileExtension = "backup";
 
   networking.hostName = "chase-desktop";
   time.timeZone = "America/Chicago";

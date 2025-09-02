@@ -3,10 +3,36 @@
 let
   cfgRoot = dotsHyprland;
   cfgDot  = "${cfgRoot}/.config";
-  wanted = [ "graphical-session.target" "hyprland-session.target" ];
+  wanted = [ "default.target" "base.target" "graphical-session.target" "hyprland-session.target" ];
+  haveCfg = builtins.pathExists cfgDot;
+  skipTop = [ "systemd" "fontconfig" ];
 
   # Quickshell Python venv (env4 expects this and points to it with ILLOGICAL_IMPULSE_VIRTUAL_ENV)
   venvPath = "${config.home.homeDirectory}/.local/state/quickshell/.venv";
+
+  collect = rel:
+  	let
+		here = cfgDot + (if rel == "" then "" else "/${rel}");
+		attrs = if haveCfg && builtins.pathExists here then builtins.readDir here else { };
+		names = builtins.attrNames attrs;
+	in
+		builtins.concatMap (n:
+			if (rel == "" && lib.elem n skipTop) then []
+			else
+				let
+					nextRel = if rel == "" then n else "${rel}/${n}";
+					kind = attrs.${n};
+				in
+					if kind == "directory" then collect nextRel ++ [ nextRel]
+					else [ nextRel ]
+				) names;
+
+  toNullAttrs = paths: builtins.listToAttrs (map (p: {
+  	name = p;
+	value = lib.mkForce { enable = false; };
+  }) paths);
+  
+  disableSet = toNullAttrs (collect "");
 
   wallpaperFile = "${config.home.homeDirectory}/.cache/wallpaper/current";
   makeWritableDir = name: ''
@@ -164,6 +190,33 @@ libsForQt5.qt5.qtxmlpatterns
 quickshellVenvSetup
   ];
 
+systemd.user.enable = true;
+systemd.user.startServices = "sd-switch";
+# Start services *as part of* the graphical session
+systemd.user.services.quickshell.Unit.PartOf = [ "graphical-session.target" ];
+systemd.user.services.swww-daemon.Unit.PartOf = [ "graphical-session.target" ];
+
+# Restore the last wallpaper on login (so colors are correct immediately)
+systemd.user.services.wallpaper-restore = {
+  Unit = {
+    Description = "Restore wallpaper on login";
+    After = [ "graphical-session.target" "swww-daemon.service" ];
+    PartOf = [ "graphical-session.target" ];
+  };
+  Service = {
+    Type = "oneshot";
+    ExecStart = ''
+      ${pkgs.bash}/bin/bash -lc '
+        if [ -r "$HOME/.cache/wallpaper/current" ]; then
+          exec ${pkgs.swww}/bin/swww img "$HOME/.cache/wallpaper/current" --transition-type none
+        fi
+      '
+    '';
+  };
+  Install.WantedBy = [ "graphical-session.target" ];
+};
+
+
   # Wallpaper → Matugen auto-apply
 systemd.user.services.matugen-apply = {
   Unit = { Description = "Apply Material You colors from current wallpaper"; After = [ "swww-daemon.service" ]; };
@@ -183,7 +236,7 @@ systemd.user.services.matugen-apply = {
 };
 
 
-  systemd.user.paths.wallpaper-watch = {
+   systemd.user.paths.wallpaper-watch = {
     Unit = { Description = "Watch wallpaper changes"; };
     Path = {
       PathChanged = wallpaperFile;
@@ -197,7 +250,7 @@ systemd.user.services.quickshell-venv-setup = {
     Type = "oneshot";
     ExecStart = "${quickshellVenvSetup}/bin/quickshell-venv-setup";
   };
-  Install.WantedBy = [ "default.target" ];
+  Install.WantedBy = [ "graphical-session.target" ];
 };
 
   # Quickshell service (via wrapper so env is correct)
@@ -226,25 +279,25 @@ systemd.user.services.quickshell-venv-setup = {
     fcitx5 = {
       Unit = { Description = "fcitx5"; After = [ "graphical-session.target" ]; };
       Service = { ExecStart = "${pkgs.fcitx5}/bin/fcitx5"; Restart = "on-failure"; };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
 
     swww-daemon = {
       Unit = { Description = "swww wallpaper daemon"; After = [ "graphical-session.target" ]; };
       Service = { ExecStart = "${pkgs.swww}/bin/swww-daemon"; Restart = "always"; };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
 
     dunst = {
       Unit = { Description = "Dunst notification daemon"; After = [ "graphical-session.target" ]; };
       Service = { ExecStart = "${pkgs.dunst}/bin/dunst -config %h/.config/dunst/dunstrc"; Restart = "on-failure"; };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
 
     polkit-agent = {
       Unit = { Description = "PolicyKit Authentication Agent"; After = [ "graphical-session.target" ]; };
       Service = { ExecStart = "${pkgs.lxqt.lxqt-policykit}/bin/lxqt-policykit-agent"; Restart = "on-failure"; };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
 
     cliphist-text = {
@@ -253,7 +306,7 @@ systemd.user.services.quickshell-venv-setup = {
         ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste -t text --watch ${pkgs.cliphist}/bin/cliphist store";
         Restart = "always";
       };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
 
     cliphist-primary = {
@@ -262,7 +315,7 @@ systemd.user.services.quickshell-venv-setup = {
         ExecStart = "${pkgs.wl-clipboard}/bin/wl-paste -p -t text --watch ${pkgs.cliphist}/bin/cliphist store";
         Restart = "always";
       };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
 
     swayidle = {
@@ -271,17 +324,17 @@ systemd.user.services.quickshell-venv-setup = {
         ExecStart = "${pkgs.swayidle}/bin/swayidle -w timeout 300 '${pkgs.swaylock-effects}/bin/swaylock -f -c 000000' timeout 600 'systemctl suspend'";
         Restart = "always";
       };
-      Install.WantedBy = [ "graphical-session.target" "hyprland-session.target" ];
+      Install.WantedBy = wanted;
     };
   };
 
   programs.starship = { enable = true; enableZshIntegration = true; };
   fonts.fontconfig.enable = true;
 
-  # wayland.windowManager.hyprland = {
-  #   enable = true;
-  #   package = pkgsUnstable.hyprland;
-  # };
+    #wayland.windowManager.hyprland = {
+    #enable = true;
+    # package = pkgsUnstable.hyprland;
+    #};
 
   home.sessionVariables = {
     NIXOS_OZONE_WL = "1";
@@ -294,28 +347,37 @@ systemd.user.services.quickshell-venv-setup = {
     QT_IM_MODULE  = "fcitx";
     XMODIFIERS    = "@im=fcitx";
     ILLOGICAL_IMPULSE_VIRTUAL_ENV = venvPath;
+    TERMINAL = "kitty";
   };
   xdg.enable = true;
-  xdg.configFile = {
-    "quickshell".source                = lib.mkForce "${cfgDot}/quickshell";
-    "dunst".source                     = lib.mkForce "${cfgDot}/dunst";
-    "wlogout".source                   = lib.mkForce "${cfgDot}/wlogout";
-    "qt5ct".source                     = lib.mkForce "${cfgDot}/qt5ct";
+  xdg.configFile = disableSet;
 
-    # (you already fixed fonts; keep these as you had them)
-    "fontconfig/fonts.conf".source     = lib.mkForce "${cfgDot}/fontconfig/fonts.conf";
+home.activation.configSync = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
+  set -euxo pipefail
+  src="${cfgDot}"
 
-    # Other app configs you were syncing
-    "foot".source                      = lib.mkForce "${cfgDot}/foot";
-    "mpv".source                       = lib.mkForce "${cfgDot}/mpv";
-    "xdg-desktop-portal".source        = lib.mkForce "${cfgDot}/xdg-desktop-portal";
-    "zshrc.d".source                   = lib.mkForce "${cfgDot}/zshrc.d";
-    "chrome-flags.conf".source         = lib.mkForce "${cfgDot}/chrome-flags.conf";
-    "code-flags.conf".source           = lib.mkForce "${cfgDot}/code-flags.conf";
-    "konsolerc".source                 = lib.mkForce "${cfgDot}/konsolerc";
-    "starship.toml".source             = lib.mkForce "${cfgDot}/starship.toml";
-    "thorium-flags.conf".source        = lib.mkForce "${cfgDot}/thorium-flags.conf";
-  };
+  while IFS= read -r -d $'\0' path; do
+    rel="''${path#"$src/"}"
+    [ -z "$rel" ] && continue
+    d="$HOME/.config/$rel"
+
+    case "$rel" in
+    	systemd|systemd/*) continue ;;
+	fontconfig|fontconfig/*) continue ;;
+    esac
+
+    if [ -L "$d" ] && [[ "$(readlink -f "$d")" == /nix/store/* ]]; then
+      rm -f "$d"
+    fi
+
+    if [ ! -e "$d" ]; then
+      echo "Config sync: seeding $d from $src"
+      mkdir -p "$(dirname "$d")"
+      cp -a --no-preserve=mode,ownership "$path" "$d"
+    fi
+  done < <(find "$src" -mindepth 1 -print0)
+'';
+
 
 home.activation.materialYouWritable = lib.hm.dag.entryAfter [ "writeBoundary" ] ''
   make_writable_dir() {
